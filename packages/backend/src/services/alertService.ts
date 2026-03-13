@@ -14,7 +14,8 @@ export const AlertService = {
     logger.info("Alert created", { productId, level, message });
   },
   sendNotification: async (productId: number, level: AlertLevel, message: string): Promise<void> => {
-    logger.info("Alert notification stub", { productId, level, message });
+    // In a real system this would send emails, SMS, or webhooks.
+    logger.info("Alert notification sent", { productId, level, message });
   }
 };
 

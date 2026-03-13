@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { ConsumptionService } from "../services/consumptionService";
 import { InventoryService } from "../services/inventoryService";
+import { enqueueReorderEvaluation } from "../queues";
 
 export const consumptionRouter = Router();
 
@@ -17,6 +18,9 @@ consumptionRouter.post("/", async (req, res) => {
   const body = consumptionSchema.parse(req.body);
   await ConsumptionService.recordConsumption(body.productId, body.type, body.qty, body.reference);
   await InventoryService.applyConsumption(body.productId, body.qty, body.reference, body.type);
+  // Asynchronously evaluate whether a reorder is needed for this product.
+  // Idempotency is enforced by ReorderService (advisory locks + time buckets).
+  await enqueueReorderEvaluation(body.productId);
   res.status(201).json({ status: "ok" });
 });
 

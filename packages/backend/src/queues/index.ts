@@ -3,6 +3,7 @@ import { config } from "../config";
 import { logger } from "../logging";
 import { ReorderService } from "../services/reorderService";
 import { PurchaseOrderService } from "../services/purchaseOrderService";
+import { AlertService } from "../services/alertService";
 
 const connection = {
   connection: {
@@ -40,7 +41,11 @@ export const startWorkers = () => {
       try {
         await PurchaseOrderService.createPO(reorderId);
       } catch (e) {
-        logger.error("PO creation failed", { reorderId, error: (e as Error).message });
+        logger.error("PO creation failed", { reorderId, error: (e as Error).message, attempts: job.attemptsMade });
+        // After several failed attempts, raise a warning alert so operators can intervene.
+        if (job.attemptsMade >= 3) {
+          await AlertService.createAlert(reorderId, "WARNING" as any, "Repeated purchase order creation failures");
+        }
         throw e;
       }
     },
@@ -50,7 +55,10 @@ export const startWorkers = () => {
   new Worker(
     "supplierWebhookQueue",
     async job => {
-      logger.info("Supplier webhook job", { data: job.data });
+      const poId = job.data.poId as number;
+      const status = job.data.status as string;
+      logger.info("Supplier webhook job", { poId, status });
+      await PurchaseOrderService.applySupplierStatus(poId, status);
     },
     connection
   );
@@ -58,7 +66,9 @@ export const startWorkers = () => {
   new Worker(
     "alertQueue",
     async job => {
-      logger.info("Alert queue job", { data: job.data });
+      const { productId, level, message } = job.data as { productId: number; level: string; message: string };
+      logger.info("Alert queue job", { productId, level, message });
+      await AlertService.sendNotification(productId, level as any, message);
     },
     connection
   );

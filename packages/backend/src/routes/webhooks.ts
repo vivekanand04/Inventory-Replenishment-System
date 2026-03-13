@@ -2,6 +2,8 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../prismaClient";
 import { logger } from "../logging";
+import { supplierWebhookQueue } from "../queues";
+import { PurchaseOrderService } from "../services/purchaseOrderService";
 
 export const webhookRouter = Router();
 
@@ -26,6 +28,7 @@ webhookRouter.post("/supplier", async (req, res) => {
     }
   });
   logger.info("Supplier webhook received", { poId: body.poId, status: body.status });
-  res.status(200).json({ status: "processed" });
+  await supplierWebhookQueue.add("supplierStatus", { poId: body.poId, status: body.status });
+  res.status(202).json({ status: "queued" });
 });
 

@@ -3,6 +3,7 @@ import { prisma, withAdvisoryLock } from "../prismaClient";
 import { computeReorderQuantity } from "./reorderAlgorithm";
 import { ConsumptionService } from "./consumptionService";
 import { AuditService } from "./auditService";
+import { InventoryService } from "./inventoryService";
 
 const timeBucketForNow = (): string => {
   const now = new Date();
@@ -65,6 +66,8 @@ export const ReorderService = {
           time_bucket: bucket
         }
       });
+      // Mark inventory as REORDER_TRIGGERED to align with state machine
+      await InventoryService.markReorderTriggered(productId);
       await AuditService.appendEvent(
         { name: "reorder.trigger", productId },
         {
