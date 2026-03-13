@@ -1,0 +1,160 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id               Int                 @id @default(autoincrement())
+  sku              String              @unique
+  name             String
+  description      String?
+  reorder_level    Int
+  reorder_point    Int
+  safety_stock     Int
+  unit_cost        Decimal
+  lead_time_days   Int
+  reorder_min      Int
+  reorder_max      Int
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  inventory        Inventory?
+  consumption      ConsumptionRecord[]
+  reorders         Reorder[]
+  inventoryHistory InventoryStateHistory[]
+  alerts           Alert[]
+  auditEvents      AuditEvent[]
+}
+
+model Inventory {
+  id                 Int       @id @default(autoincrement())
+  productId          Int       @unique
+  quantity_available Int       @default(0)
+  quantity_in_transit Int      @default(0)
+  blocked_quantity   Int       @default(0)
+  state              InventoryState
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  product            Product   @relation(fields: [productId], references: [id])
+}
+
+model ConsumptionRecord {
+  id          Int                  @id @default(autoincrement())
+  productId   Int
+  type        ConsumptionType
+  quantity    Int
+  referenceId String
+  timestamp   DateTime             @default(now())
+  product     Product              @relation(fields: [productId], references: [id])
+}
+
+model Reorder {
+  id              Int                @id @default(autoincrement())
+  productId       Int
+  triggered_at    DateTime           @default(now())
+  status          ReorderStatus
+  reorder_quantity Int
+  idempotency_key String
+  time_bucket     String
+  product         Product            @relation(fields: [productId], references: [id])
+  purchaseOrders  PurchaseOrder[]
+
+  @@unique([idempotency_key])
+  @@index([productId, time_bucket])
+}
+
+model Supplier {
+  id                     Int               @id @default(autoincrement())
+  name                   String
+  lead_time_days_override Int?
+  contact_info           String?
+  purchaseOrders         PurchaseOrder[]
+}
+
+model PurchaseOrder {
+  id                    Int              @id @default(autoincrement())
+  supplierId            Int
+  reorderId             Int?
+  status                PurchaseOrderStatus
+  expected_delivery_date DateTime?
+  total_cost            Decimal          @default(0)
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  supplier              Supplier         @relation(fields: [supplierId], references: [id])
+  reorder               Reorder?         @relation(fields: [reorderId], references: [id])
+}
+
+model InventoryStateHistory {
+  id         Int             @id @default(autoincrement())
+  productId  Int
+  from_state InventoryState
+  to_state   InventoryState
+  changed_at DateTime        @default(now())
+  meta       Json?
+  product    Product         @relation(fields: [productId], references: [id])
+}
+
+model Alert {
+  id         Int        @id @default(autoincrement())
+  productId  Int
+  level      AlertLevel
+  message    String
+  sent_at    DateTime   @default(now())
+  acknowledged Boolean  @default(false)
+  product    Product    @relation(fields: [productId], references: [id])
+}
+
+model AuditEvent {
+  id         Int       @id @default(autoincrement())
+  productId  Int?
+  context    String
+  payload    Json
+  createdAt  DateTime  @default(now())
+  product    Product?  @relation(fields: [productId], references: [id])
+}
+
+model ProcessedWebhook {
+  id        Int      @id @default(autoincrement())
+  externalId String  @unique
+  processedAt DateTime @default(now())
+}
+
+enum ConsumptionType {
+  SALE
+  USAGE
+  ADJUSTMENT
+}
+
+enum ReorderStatus {
+  TRIGGERED
+  CREATED_PO
+  CANCELLED
+  COMPLETED
+}
+
+enum PurchaseOrderStatus {
+  CREATED
+  SENT
+  PARTIAL
+  RECEIVED
+  CANCELLED
+}
+
+enum InventoryState {
+  IN_STOCK
+  LOW_STOCK
+  REORDER_TRIGGERED
+  IN_TRANSIT
+  RECEIVED
+  OUT_OF_STOCK
+  BLOCKED
+}
+
+enum AlertLevel {
+  INFO
+  WARNING
+  CRITICAL
+}

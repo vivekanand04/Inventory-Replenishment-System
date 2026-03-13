@@ -1,0 +1,25 @@
+{
+  "name": "inventory-replenishment-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "pnpm -r run build",
+    "dev": "pnpm --filter backend dev",
+    "start": "pnpm --filter backend start",
+    "test": "pnpm -r run test",
+    "migrate:dev": "pnpm --filter backend migrate:dev",
+    "seed": "pnpm --filter backend seed",
+    "simulate:concurrency": "pnpm --filter backend simulate:concurrency",
+    "lint": "pnpm -r run lint"
+  },
+  "workspaces": [
+    "packages/backend",
+    "packages/shared"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}

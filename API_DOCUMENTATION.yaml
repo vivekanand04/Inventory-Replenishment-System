@@ -1,0 +1,195 @@
+openapi: 3.0.3
+info:
+  title: Inventory Replenishment API
+  version: 1.0.0
+servers:
+  - url: http://localhost:4000
+paths:
+  /api/products:
+    post:
+      summary: Create product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProductRequest'
+      responses:
+        '201':
+          description: Created
+    get:
+      summary: List products with inventory
+      responses:
+        '200':
+          description: OK
+  /api/consumption:
+    post:
+      summary: Record consumption and apply to inventory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsumptionRequest'
+      responses:
+        '201':
+          description: Created
+  /api/reorders/trigger:
+    post:
+      summary: Trigger reorder evaluation for products
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReorderTriggerRequest'
+      responses:
+        '200':
+          description: OK
+  /api/reorders:
+    get:
+      summary: List pending reorders
+      responses:
+        '200':
+          description: OK
+  /api/purchase-orders/{id}/receive:
+    post:
+      summary: Apply receipt of goods
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReceiptRequest'
+      responses:
+        '200':
+          description: OK
+  /api/webhooks/supplier:
+    post:
+      summary: Supplier webhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupplierWebhookRequest'
+      responses:
+        '200':
+          description: OK
+  /api/audit:
+    get:
+      summary: List audit events
+      parameters:
+        - in: query
+          name: productId
+          schema:
+            type: integer
+        - in: query
+          name: take
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+components:
+  schemas:
+    CreateProductRequest:
+      type: object
+      properties:
+        sku:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        reorder_level:
+          type: integer
+        reorder_point:
+          type: integer
+        safety_stock:
+          type: integer
+        unit_cost:
+          type: number
+        lead_time_days:
+          type: integer
+        reorder_min:
+          type: integer
+        reorder_max:
+          type: integer
+      required:
+        - sku
+        - name
+        - reorder_level
+        - reorder_point
+        - safety_stock
+        - unit_cost
+        - lead_time_days
+        - reorder_min
+        - reorder_max
+    ConsumptionRequest:
+      type: object
+      properties:
+        productId:
+          type: integer
+        qty:
+          type: integer
+        type:
+          type: string
+          enum: [SALE, USAGE, ADJUSTMENT]
+        reference:
+          type: string
+        idempotencyKey:
+          type: string
+      required:
+        - productId
+        - qty
+        - type
+        - reference
+    ReorderTriggerRequest:
+      type: object
+      properties:
+        productIds:
+          type: array
+          items:
+            type: integer
+        idempotencyKey:
+          type: string
+      required:
+        - productIds
+    ReceiptRequest:
+      type: object
+      properties:
+        lines:
+          type: array
+          items:
+            type: object
+            properties:
+              productId:
+                type: integer
+              qty_received:
+                type: integer
+            required:
+              - productId
+              - qty_received
+      required:
+        - lines
+    SupplierWebhookRequest:
+      type: object
+      properties:
+        id:
+          type: string
+        poId:
+          type: integer
+        status:
+          type: string
+      required:
+        - id
+        - poId
+        - status
+
